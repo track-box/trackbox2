@@ -11,85 +11,199 @@ app.use(multer());
 
 
 app.set('port', (process.env.PORT || 5000));
-app.use(express.static(__dirname + '/public'));
-
-app.set('view engine', 'ejs');
 
 
 app.get('/', function(req, res) {
-	res.render('index', {
-		shared: false,
-		track_id: 0
-	});
-});
-
-app.get('/track/:id', function(req, res) {
-	res.render('index', {
-		shared: true,
-		track_id: req.param("id")
-	});
+	res.send("Trackbox API Sever!");
 });
 
 
 app.get('/get', function (req, res) {
 	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
 		if (err) throw (err);
+
 		var id = req.param("id");
-		console.log(id);
-		client.query('SELECT * FROM track_table where id=$1', [id], function(err, result) {
-			done();
-			if (err) {
-				console.error(err);
-				res.send("Error " + err);
+		getTrack(client, id, function(data){
+			res.send(data);
+		});
+	});
+});
+
+app.get('/edit', function (req, res) {
+	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
+		if (err) throw (err);
+
+		var id = req.param("id");
+		getTrackId(client, id, function(track_id){
+			if (track_id){
+				getTrack(client, track_id, function(data){
+					res.send(data);
+				});
+
 			}else{
-				if ( result.rows.length > 0 ){
-					res.send(result.rows[0].data);
-				}else{
-					res.send("Error not found");
-				}
+				res.send({ error: "invalid id" });
 			}
 		});
 	});
-})
+});
 
 
 app.post('/post', function (req, res) {
 	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
 		var data = req.body.data;
-		generateID();
-
-		function generateID() {
-			var id = Math.random().toString(36).slice(-8);
-			client.query('SELECT * FROM track_table where id=$1', [id], function(err, result) {
-				done();
-				if (err) {
-					console.error(err);
-					res.send("Error " + err);
-				}else{
-					if ( result.rows.length > 1 ){
-						generateID();
-					}else{
-						insertData(id);
-					}
+		
+		generateTrackId(client, function (track_id){
+			generateEditId(client, function (edit_id) {
+				if (!track_id || !edit_id) {
+					return res.send("error!");
 				}
-			});
-		}
 
-		function insertData(id) {
-			console.log(id)
-			client.query('INSERT INTO track_table (id, data) VALUES ($1, $2)', [id, data], function(err, result) {
-				done();
-				if (err) {
-					console.error(err);
-					res.send("Error " + err);
-				}else{
-					res.send({ id: id });
-				}
+				insertData(client, track_id, data, function (){
+					insertEditId(client, edit_id, track_id, function (){
+						res.send({
+							id: track_id,
+							edit_id: edit_id
+						});
+					});
+				});
 			});
-		}
+		});
 	});
 })
 
-app.listen(app.get('port'), function() {
- 	console.log("Node app is running at localhost:" + app.get('port'));
+app.post('/update', function (req, res) {
+	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
+		if (err) throw (err);
+
+		var id = req.body.id;
+		var data = req.body.data;
+
+		getTrackId(client, id, function(track_id){
+			if (track_id){
+				updateData(client, track_id, data, function(r){
+					res.send(r);
+				});
+
+			}else{
+				res.send({ error: "invalid id" });
+			}
+		});
+	});
 });
+
+app.listen(app.get('port'), function() {
+ 	console.log("Node app is running at " + app.get('port'));
+});
+
+
+
+//-----------------------------------------------------------------------------
+// functions
+//-----------------------------------------------------------------------------
+
+function getTrack(client, id, callback) {
+	client.query('SELECT * FROM track where id=$1', [id], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback({ error: "Database error:" + err });
+
+		}else{
+			if (result.rows.length > 0){
+				callback(result.rows[0].data);
+
+			}else{
+				callback({ error: "not found" });
+			}
+		}
+	});
+}
+
+function getTrackId(client, edit_id, callback) {
+	client.query('SELECT * FROM edit where id=$1', [edit_id], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback();
+
+		}else{
+			if (result.rows.length > 0){
+				callback(result.rows[0].track_id);
+
+			}else{
+				callback();
+			}
+		}
+	});
+}
+
+function generateTrackId(client, callback) {
+	var id = Math.random().toString(36).slice(-9);
+	client.query('SELECT * FROM track where id=$1', [id], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback();
+
+		}else{
+			if ( result.rows.length > 1 ){
+				generateTrackId(client, callback);
+			}else{
+				callback(id);
+			}
+		}
+	});
+}
+
+function generateEditId(client, callback) {
+	var id = Math.random().toString(36).slice(-12);
+	client.query('SELECT * FROM edit where id=$1', [id], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback();
+
+		}else{
+			if ( result.rows.length > 1 ){
+				generateEditId(client, callback);
+			}else{
+				callback(id);
+			}
+		}
+	});
+}
+
+function insertData(client, id, data, callback) {
+	console.log(id)
+	client.query('INSERT INTO track (id, data) VALUES ($1, $2)', [id, data], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback("Error " + err);
+
+		}else{
+			callback();
+		}
+	});
+}
+
+function updateData(client, id, data, callback) {
+	console.log(id)
+	client.query('UPDATE track SET data=$2 WHERE id=$1', [id, data], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback({ error: "Error " + err });
+
+		}else{
+			callback({ success: "updated" });
+		}
+	});
+}
+
+function insertEditId(client, id, track_id, callback) {
+	console.log(id)
+	client.query('INSERT INTO edit (id, track_id) VALUES ($1, $2)', [id, track_id], function(err, result) {
+		if (err) {
+			console.error(err);
+			callback("Error " + err);
+
+		}else{
+			callback();
+		}
+	});
+}

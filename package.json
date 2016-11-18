@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "body-parser": "1.10.x",
-    "ejs": "1.0.x",
     "express": "~4.9.x",
     "multer": "0.1.x",
     "newrelic": "^1.14.2",
