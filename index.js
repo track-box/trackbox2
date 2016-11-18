@@ -24,7 +24,7 @@ app.get('/get', function (req, res) {
 
 		var id = req.param("id");
 		getTrack(client, id, function(data){
-			res.send(data);
+			res.jsonp(data);
 		});
 	});
 });
@@ -37,11 +37,11 @@ app.get('/edit', function (req, res) {
 		getTrackId(client, id, function(track_id){
 			if (track_id){
 				getTrack(client, track_id, function(data){
-					res.send(data);
+					res.jsonp(data);
 				});
 
 			}else{
-				res.send({ error: "invalid id" });
+				res.jsonp({ error: "invalid id" });
 			}
 		});
 	});
@@ -81,11 +81,11 @@ app.post('/update', function (req, res) {
 		getTrackId(client, id, function(track_id){
 			if (track_id){
 				updateData(client, track_id, data, function(r){
-					res.send(r);
+					res.jsnop(r);
 				});
 
 			}else{
-				res.send({ error: "invalid id" });
+				res.jsonp({ error: "invalid id" });
 			}
 		});
 	});
