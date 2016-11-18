@@ -7,9 +7,7 @@ var multer = require('multer');
 var corser = require("corser");
 app.use(corser.create());
 
-app.use(bodyParser({limit: '1mb'}));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit:'50mb',extended: true }));
 app.use(multer());
 
 
