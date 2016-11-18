@@ -4,6 +4,9 @@ var pg = require('pg');
 var bodyParser = require('body-parser');
 var multer = require('multer');
 
+var corser = require("corser");
+app.use(corser.create());
+
 app.use(bodyParser({limit: '1mb'}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
