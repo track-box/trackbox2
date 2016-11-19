@@ -53,7 +53,6 @@ app.get('/edit', function (req, res) {
 app.post('/post', function (req, res) {
 	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
 		var data = req.body.data;
-		console.log(req.body);
 		
 		generateTrackId(client, function (track_id){
 			generateEditId(client, function (edit_id) {
@@ -84,7 +83,7 @@ app.post('/update', function (req, res) {
 		getTrackId(client, id, function(track_id){
 			if (track_id){
 				updateData(client, track_id, data, function(r){
-					res.jsnop(r);
+					res.jsonp(r);
 				});
 
 			}else{
