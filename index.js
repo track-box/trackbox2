@@ -52,6 +52,7 @@ app.get('/edit', function (req, res) {
 app.post('/post', function (req, res) {
 	pg.connect(process.env.DATABASE_URL, function(err, client, done) {
 		var data = req.body.data;
+		console.log(data);
 		
 		generateTrackId(client, function (track_id){
 			generateEditId(client, function (edit_id) {
